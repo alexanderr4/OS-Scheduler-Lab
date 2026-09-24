@@ -33,6 +33,10 @@ function App() {
     return () => window.clearInterval(timer)
   }, [isPlaying, maxTime])
 
+  useEffect(() => {
+    if (showLearn) document.getElementById('learn-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }, [showLearn])
+
   const runSimulation = () => {
     setBeforeResults((current) => current ?? results)
     setHasRun(true)
@@ -64,7 +68,7 @@ function App() {
       </header>
 
       <section className="hero" id="top">
-        <div className="hero-copy"><span className="eyebrow">Laboratorio interactivo de sistemas operativos <span className="spark">✦</span></span><h1>Visualiza cómo<br /><em>piensa un sistema operativo.</em></h1><p>Procesos reales, decisiones visibles. Carga una vez y observa seis estrategias compartir la misma CPU.</p><div className="hero-actions"><a className="button button-dark" href="#simulator">Crear simulación ↓</a><button className="button button-ghost" type="button" onClick={() => setShowLearn((value) => !value)}>◎ Aprender</button></div></div>
+        <div className="hero-copy"><span className="eyebrow">Laboratorio interactivo de sistemas operativos <span className="spark">✦</span></span><h1>Visualiza cómo<br /><em>piensa un sistema operativo.</em></h1><p>Procesos reales, decisiones visibles. Carga una vez y observa seis estrategias compartir la misma CPU.</p><div className="hero-actions"><a className="button button-dark" href="#simulator">Crear simulación ↓</a><button className="button button-ghost" type="button" onClick={() => setShowLearn((value) => !value)}>◎ {showLearn ? 'Ocultar aprendizaje' : 'Aprender'}</button></div></div>
         <div className="hero-orbit" aria-hidden="true"><span className="orbit-ring ring-one" /><span className="orbit-ring ring-two" /><span className="orbit-core">CPU</span><span className="orbit-label label-one">input</span><span className="orbit-label label-two">decision</span></div>
       </section>
 
@@ -84,8 +88,9 @@ function App() {
 
         <LabPanel processes={processes} results={results} beforeResults={beforeResults ?? results} quantum={quantum} onQuantumChange={(next) => { setBeforeResults(results); setQuantum(next); setHasRun(true); setCurrentTime(0) }} onApplyProcesses={(next) => { setBeforeResults(results); setProcesses(next); setHasRun(true); setCurrentTime(0) }} currentTime={currentTime} onTimeChange={setCurrentTime} selectedAlgorithm={selectedAlgorithm} onAlgorithmChange={setSelectedAlgorithm} maxTime={maxTime} />
 
-        {showLearn && <section className="learn-section panel"><div><span className="step-label">PASO 05 / ENTENDER</span><h2>Diccionario de la CPU</h2><p>La planificación es decidir quién usa un recurso limitado y cuándo.</p></div><div className="learn-grid">{[['Proceso', 'Un trabajo que necesita tiempo de CPU.'], ['Tiempo de llegada', 'El momento en que el proceso entra a la cola.'], ['Ráfaga CPU', 'Cuánto tiempo necesita para terminar.'], ['Prioridad', 'Qué tan importante es frente a otros procesos.'], ['Quantum', 'El pequeño turno de tiempo de Round Robin.'], ['Expropiativo', 'La CPU puede cambiar de proceso antes de que termine.']].map(([term, definition]) => <div key={term}><strong>{term}</strong><span>{definition}</span></div>)}</div></section>}
+        {showLearn && <section className="learn-section panel" id="learn-section"><div><span className="step-label">PASO 05 / ENTENDER</span><h2>Diccionario de la CPU</h2><p>La planificación es decidir quién usa un recurso limitado y cuándo.</p></div><div className="learn-grid">{[['Proceso', 'Un trabajo que necesita tiempo de CPU.'], ['Tiempo de llegada', 'El momento en que el proceso entra a la cola.'], ['Ráfaga CPU', 'Cuánto tiempo necesita para terminar.'], ['Prioridad', 'Qué tan importante es frente a otros procesos.'], ['Quantum', 'El pequeño turno de tiempo de Round Robin.'], ['Expropiativo', 'La CPU puede cambiar de proceso antes de que termine.']].map(([term, definition]) => <div key={term}><strong>{term}</strong><span>{definition}</span></div>)}</div></section>}
       </div>
+      <a className="back-to-top" href="#top" aria-label="Volver arriba" title="Volver arriba">↑</a>
       <footer><span>OS Scheduler Lab</span> · Visualiza cómo piensa un sistema operativo. <span className="footer-right">Hecho para experimentar <span className="spark">✦</span></span></footer>
     </main>
   )
