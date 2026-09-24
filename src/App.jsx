@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import './App.css'
 import { AlgorithmCard } from './components/AlgorithmCard'
 import { ProcessTable } from './components/ProcessTable'
+import { LabPanel } from './components/LabPanel'
 import { algorithms } from './algorithms'
 import { exampleProcesses, scenarios } from './data/scenarios'
 
@@ -15,6 +16,8 @@ function App() {
   const [explainMode, setExplainMode] = useState(false)
   const [selectedAlgorithm, setSelectedAlgorithm] = useState('fcfs')
   const [showLearn, setShowLearn] = useState(false)
+  const [beforeResults, setBeforeResults] = useState(null)
+  const [darkMode, setDarkMode] = useState(() => localStorage.getItem('os-scheduler-theme') === 'dark')
 
   const results = useMemo(() => algorithms.map((algorithm) => ({ algorithm, result: algorithm.run(processes, quantum) })), [processes, quantum])
   const maxTime = Math.max(...results.flatMap(({ result }) => result.timeline.map((segment) => segment.end)), 1)
@@ -31,6 +34,7 @@ function App() {
   }, [isPlaying, maxTime])
 
   const runSimulation = () => {
+    setBeforeResults((current) => current ?? results)
     setHasRun(true)
     setSimulations((count) => count + 1)
     setCurrentTime(0)
@@ -39,23 +43,24 @@ function App() {
   const addProcess = () => {
     const nextId = Math.max(...processes.map((process) => process.id), 0) + 1
     const colors = ['#67e8c4', '#ffae64', '#f48caa', '#8ab4ff', '#e7d66b', '#c5a6ed']
+    setBeforeResults(results)
     setProcesses([...processes, { id: nextId, name: `P${nextId}`, arrival: nextId - 1, burst: 3, priority: 2, color: colors[(nextId - 1) % colors.length] }])
     setHasRun(false)
   }
-  const clearProcesses = () => { setProcesses([]); setHasRun(false); setCurrentTime(0) }
+  const clearProcesses = () => { setBeforeResults(results); setProcesses([]); setHasRun(false); setCurrentTime(0) }
   const generateRandom = () => {
     const colors = ['#67e8c4', '#ffae64', '#f48caa', '#8ab4ff', '#e7d66b', '#c5a6ed']
     const randomProcesses = Array.from({ length: 5 }, (_, index) => ({ id: index + 1, name: `P${index + 1}`, arrival: index === 0 ? 0 : Math.floor(Math.random() * 5), burst: Math.floor(Math.random() * 7) + 1, priority: Math.floor(Math.random() * 4) + 1, color: colors[index] }))
-    setProcesses(randomProcesses.sort((left, right) => left.id - right.id)); setHasRun(false); setCurrentTime(0)
+    setBeforeResults(results); setProcesses(randomProcesses.sort((left, right) => left.id - right.id)); setHasRun(false); setCurrentTime(0)
   }
-  const reset = () => { setProcesses(exampleProcesses); setQuantum(2); setHasRun(false); setCurrentTime(0); setIsPlaying(false) }
-  const loadScenario = (scenario) => { setProcesses(scenario.processes); setHasRun(false); setCurrentTime(0); document.getElementById('simulator')?.scrollIntoView({ behavior: 'smooth' }) }
+  const reset = () => { setBeforeResults(results); setProcesses(exampleProcesses); setQuantum(2); setHasRun(false); setCurrentTime(0); setIsPlaying(false) }
+  const loadScenario = (scenario) => { setBeforeResults(results); setProcesses(scenario.processes); setHasRun(false); setCurrentTime(0); document.getElementById('simulator')?.scrollIntoView({ behavior: 'smooth' }) }
 
   return (
-    <main className="app-shell">
+    <main className={`app-shell ${darkMode ? 'dark-mode' : ''}`}>
       <header className="topbar">
         <a className="brand" href="#top" aria-label="OS Scheduler Lab inicio"><span className="brand-mark">OS</span><span>OS Scheduler Lab</span></a>
-        <div className="topbar-meta"><span className="status-dot" /> Centro de control <span className="version">v1.0</span></div>
+        <div className="topbar-meta"><span className="status-dot" /> Centro de control <button className="theme-toggle" type="button" onClick={() => { const next = !darkMode; setDarkMode(next); localStorage.setItem('os-scheduler-theme', next ? 'dark' : 'light') }} aria-label="Cambiar tema">{darkMode ? '☀️' : '🌙'}</button><span className="version">v2.0</span></div>
       </header>
 
       <section className="hero" id="top">
@@ -67,7 +72,7 @@ function App() {
 
       <div className="workspace" id="simulator">
         <div className="section-intro"><div><span className="step-label">PASO 01 / CREAR</span><h2>Prepara la carga de trabajo</h2><p>Estos son los trabajos que esperan usar la CPU. Puedes cambiar sus datos o cargar un escenario.</p></div><span className="info-tip" title="Todos los algoritmos reciben exactamente estos mismos procesos.">?</span></div>
-        <ProcessTable processes={processes} onChange={(next) => { setProcesses(next); setHasRun(false) }} onAdd={addProcess} onReset={reset} onRemove={(id) => { setProcesses(processes.filter((process) => process.id !== id)); setHasRun(false) }} onClear={clearProcesses} onExample={() => { setProcesses(exampleProcesses); setHasRun(false) }} onRandom={generateRandom} />
+        <ProcessTable processes={processes} onChange={(next) => { setBeforeResults(results); setProcesses(next); setHasRun(false) }} onAdd={addProcess} onReset={reset} onRemove={(id) => { setBeforeResults(results); setProcesses(processes.filter((process) => process.id !== id)); setHasRun(false) }} onClear={clearProcesses} onExample={() => { setBeforeResults(results); setProcesses(exampleProcesses); setHasRun(false) }} onRandom={generateRandom} />
         <section className="settings-bar"><div><span className="eyebrow">Paso 02 / Configurar</span><strong>Parámetros de la simulación</strong></div><label className="quantum-control" title="El quantum es el pequeño turno que recibe un proceso antes de ceder la CPU.">Quantum de Round Robin <input type="number" min="1" max="20" value={quantum} onChange={(event) => setQuantum(Math.max(1, Number(event.target.value)))} /><span>unidades</span></label><span className="sync-label"><span className="sync-icon">↯</span> Misma entrada para todos</span></section>
         <div className="run-zone"><div><span className="step-label">PASO 03 / OBSERVAR</span><h2>Ejecuta el centro de control</h2><p>{hasRun ? 'La CPU ya tomó sus decisiones. Cambia los datos y vuelve a ejecutar para comparar.' : 'Presiona ejecutar para ver cómo seis estrategias toman decisiones distintas.'}</p></div><button className="run-button" type="button" disabled={!processes.length} onClick={runSimulation}><span>▶</span> Ejecutar simulación</button></div>
 
@@ -76,6 +81,8 @@ function App() {
         <section className="results-section"><div className="results-heading"><div><span className="step-label">PASO 04 / COMPARAR</span><h2>La arena de planificación</h2><p>Cada estrategia resuelve el mismo problema con una idea diferente. No existe un ganador absoluto.</p></div><span className="result-count">{processes.length} procesos · {processes.reduce((sum, process) => sum + process.burst, 0)} unidades</span></div><div className="algorithm-tabs">{results.map(({ algorithm }) => <button key={algorithm.key} className={selectedAlgorithm === algorithm.key ? 'active' : ''} type="button" onClick={() => setSelectedAlgorithm(algorithm.key)}>{algorithm.name}</button>)}</div><div className="algorithm-grid">{results.map(({ algorithm, result }) => <AlgorithmCard key={algorithm.key} algorithm={algorithm} result={result} processes={processes} quantum={quantum} maxTime={maxTime} currentTime={currentTime} active={selectedAlgorithm === algorithm.key} onSelect={() => setSelectedAlgorithm(algorithm.key)} />)}</div></section>
 
         <section className="scenario-section"><div><span className="step-label">EXPERIMENTA</span><h2>Escenarios para aprender</h2><p>Empieza con una situación conocida y observa qué cambia al cambiar la regla.</p></div><div className="scenario-grid">{scenarios.map((scenario) => <button type="button" className="scenario-card" key={scenario.id} onClick={() => loadScenario(scenario)}><span>{scenario.icon}</span><strong>{scenario.title}</strong><small>{scenario.description}</small><b>Probar escenario →</b></button>)}</div></section>
+
+        <LabPanel processes={processes} results={results} beforeResults={beforeResults ?? results} quantum={quantum} onQuantumChange={(next) => { setBeforeResults(results); setQuantum(next); setHasRun(true); setCurrentTime(0) }} onApplyProcesses={(next) => { setBeforeResults(results); setProcesses(next); setHasRun(true); setCurrentTime(0) }} currentTime={currentTime} onTimeChange={setCurrentTime} selectedAlgorithm={selectedAlgorithm} onAlgorithmChange={setSelectedAlgorithm} maxTime={maxTime} />
 
         {showLearn && <section className="learn-section panel"><div><span className="step-label">PASO 05 / ENTENDER</span><h2>Diccionario de la CPU</h2><p>La planificación es decidir quién usa un recurso limitado y cuándo.</p></div><div className="learn-grid">{[['Proceso', 'Un trabajo que necesita tiempo de CPU.'], ['Tiempo de llegada', 'El momento en que el proceso entra a la cola.'], ['Ráfaga CPU', 'Cuánto tiempo necesita para terminar.'], ['Prioridad', 'Qué tan importante es frente a otros procesos.'], ['Quantum', 'El pequeño turno de tiempo de Round Robin.'], ['Expropiativo', 'La CPU puede cambiar de proceso antes de que termine.']].map(([term, definition]) => <div key={term}><strong>{term}</strong><span>{definition}</span></div>)}</div></section>}
       </div>
